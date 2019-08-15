@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, session, render_template
+from flask import Flask, session, render_template, request
 from flask_session import Session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -29,6 +29,11 @@ def index():
 @app.route("signup")
 def signup():
     return render_template("Signup.html")
+
+@app.route("/search", method=["POST"])
+def search():
+    name = request.form.get("username")
+    return render_template("login.html")
 
 @app.route("login")
 def login():

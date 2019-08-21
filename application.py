@@ -21,23 +21,31 @@ Session(app)
 engine = create_engine(os.getenv("postgres://jrmqlumszscete:7a7a8b6d39ca502a1f037d56b887670a944ef7eeac3773d84447a0fa4f1f93b1@ec2-107-20-198-176.compute-1.amazonaws.com:5432/d7e9ku4tq19i8e"))
 db = scoped_session(sessionmaker(bind=engine))
 
+class user(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(55))
+    password = db.Column(db.String(55))
+
 
 @app.route("/")
 def index():
     return render_template("signup.html")
 
-@app.route("/signup", method=['POST'])
+@app.route("/signup", method=['GET', 'POST'])
 def signup():
-    #Read entered values from new user
-    username = request.form['username']
-    password = request.form['password']
+    if request.method == 'POST':
+            #Read entered values from new user
+        username = request.form['username']
+        password = request.form['password']
+        #check if entered values  are valid
+        register = user(username = username, password = password)
+        db.add(register)
+        db.commit()
+
+        return redirect(url_for('/login'))
+
     return render_template("signup.html")
-    #check if entered values  are valid
-    if username and password:
-        return json.dumps({'html':'<span>All values entered are valid</span>'})
-    else:
-        return json.dumps({'html':'<span>Please enter required fields</span>'})
-        cursor = engine.cursor()
+
 
 
 @app.route("/search", method=['POST'])
@@ -45,7 +53,6 @@ def search():
     name = request.form.get("username")
     if(name):
         try:
-            engine = connection.connect()
             sql_string = "SELECT isbn, title, author FROM books"
             engine.execute(sql_string)
             for row in engine.fetchall():
@@ -62,8 +69,8 @@ def search():
 def login():
     error = None
     if request.method == 'POST':
-        if request.form['username'] != 'admin' or request.form['password'] != 'admin':
-            error = 'Username or password is incorrect. Please try again.'
-        else:
-            return redirect(url_for('/'))
+
+        login = user.filter_by(username=username, password=password).first()
+        if login is not None:
+            return redirect(url_for('index'))
     return render_template("login.html", error=error)

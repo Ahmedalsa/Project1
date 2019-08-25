@@ -1,9 +1,11 @@
 import os
 
-from flask import Flask, session, render_template, request, redirect, url_for
+from flask import Flask, session, render_template, request, redirect, url_for, login_required
 from flask_session import Session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
+import requests
+import json
 
 
 app = Flask(__name__)
@@ -49,6 +51,7 @@ def signup():
 
 
 @app.route("/search", method=['POST'])
+@login_required
 def search():
     name = request.form.get("username")
     if(name):
@@ -66,11 +69,32 @@ def search():
 
 
 @app.route("/login", method=["GET", "POST"])
+@login_required
 def login():
-    error = None
     if request.method == 'POST':
 
-        login = user.filter_by(username=username, password=password).first()
-        if login is not None:
-            return redirect(url_for('index'))
-    return render_template("login.html", error=error)
+        session['username'] = request.form['username']
+        session['email'] = request.form['email']
+        session['id'] = request.form['id']
+        return redirect(url_for('index'))
+    return render_template("login.html")
+
+@app.route("/logout")
+def logout():
+    """Log user out"""
+
+    # Forget any user_id
+    session.clear()
+
+    # Redirect user to login form
+    return redirect("/login")
+
+
+@app.route("/api/<string:isbn>", method["GET", "POST"])
+@login_required
+def api(isbn):
+    if request.method == 'GET':
+        url = 'https://www.goodreads.com/book/review_counts.json'
+
+        response = requests.get(url, params={"key": "odIyXgoUO32BFSKOfJwaEA", "isbns": "9781632168146"})
+        print(response.json())

@@ -11,7 +11,7 @@
       <form class="" action="application.py" method="post">
         <input type="text" name="username" value="{{request.form.username}}" placeholder="Username"><br>
         <input type="password" name="password" value="{{request.form.password}}" placeholder="Password"><br>
-        <button>login</button>
+        <button class="btn btn-primary" type="submit">login</button>
       </form>
       {% if error %}
       <p class="error">{{ error }}

@@ -9,10 +9,9 @@
     <h1>Sign up</h1>
     <div class="">
       <form class="" action="application.py" method="post">
-        <input type="text" name="username" value="text" placeholder="Username..."><br>
-        <input type="email" name="email" value="email" placeholder="Email..."><br>
-        <input type="password" name="password" value="password" placeholder="Password"><br>
-        <button>signup</button>
+        <input type="text" name="username" value="{{request.form.username}}" placeholder="Username"><br>
+        <input type="password" name="password" value="{{request.form.password}}" placeholder="Password"><br>
+        <button class="btn btn-primary" type="submit">signup</button>
       </form>
       <a href="login.html">Already a member? Login!</a>
     </div>

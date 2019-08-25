@@ -52,20 +52,22 @@ def signup():
 
 @app.route("/search", method=['POST'])
 @login_required
-def search():
-    name = request.form.get("username")
-    if(name):
+def search(search, request):
+    if(search is not None):
         try:
-            sql_string = "SELECT isbn, title, author FROM books"
+            sql_string = "SELECT isbn, title, author FROM books LIKE @search+"
             engine.execute(sql_string)
             for row in engine.fetchall():
-                print(row)
+                print(<a href="book.html">row</a>)
+                if request.method == 'POST':
+                    redirect(url_for("/book.html", row))
 
-        except("Could not connect to database.")
+
+        except("NO RESULTS FOUND!")
 
 
     else:
-        return render_template("signup.html")
+        return render_template("search.html")
 
 
 @app.route("/login", method=["GET", "POST"])
@@ -80,6 +82,7 @@ def login():
     return render_template("login.html")
 
 @app.route("/logout")
+@login_required
 def logout():
     """Log user out"""
 
@@ -88,6 +91,12 @@ def logout():
 
     # Redirect user to login form
     return redirect("/login")
+
+
+app.route("/book", method["GET", "POST"])
+@login_required
+def book(id, log):
+
 
 
 @app.route("/api/<string:isbn>", method["GET", "POST"])

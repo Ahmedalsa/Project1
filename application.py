@@ -1,11 +1,10 @@
 import os
 
-from flask import Flask, session, render_template, request, redirect, url_for, login_required
+from flask import Flask, session, render_template, request, redirect, url_for, login_required, jsonify
 from flask_session import Session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 import requests
-import json
 
 
 app = Flask(__name__)
@@ -50,24 +49,20 @@ def signup():
 
 
 
-@app.route("/search", method=['POST'])
+@app.route("/search", method=["GET", "POST"])
 @login_required
-def search(search, request):
-    if(search is not None):
-        try:
-            sql_string = "SELECT isbn, title, author FROM books LIKE @search+"
-            engine.execute(sql_string)
-            for row in engine.fetchall():
-                print(<a href="book.html">row</a>)
-                if request.method == 'POST':
-                    redirect(url_for("/book.html", row))
+def search():
+    result = []
+    isbn = request.form.get("isbn")
+    title = request.form.get("title")
+    author = request.form.get("author")
+    year = request.form.get("year")
+    sql_string = "SELECT * FROM books WHERE isbn LIKE :isbn OR title = :title OR author = :author OR year LIKE :year "
+    if request.method == "POST":
+        result = db.execute(sql_string, {"isbn": f"%{isbn}%", "title": title, "author": author, "year": year}).fetchall()
+        return render_template("search.html", result=result)
 
-
-        except("NO RESULTS FOUND!")
-
-
-    else:
-        return render_template("search.html")
+    return render_template("search.html", result=result)
 
 
 @app.route("/login", method=["GET", "POST"])
@@ -84,9 +79,8 @@ def login():
 @app.route("/logout")
 @login_required
 def logout():
-    """Log user out"""
 
-    # Forget any user_id
+    # Forget any user id
     session.clear()
 
     # Redirect user to login form
@@ -95,7 +89,10 @@ def logout():
 
 app.route("/book", method["GET", "POST"])
 @login_required
-def book(id, log):
+def book(id):
+    #getting the api from the website goodreads.
+    isbn = db.execute("SELECT isbn FROM books WHERE id = :id", {"id": id}).fetchone()
+    response = requests.get("https://www.goodreads.com/book/review_counts.json", params={"key": "odIyXgoUO32BFSKOfJwaEA", "isbns": "9781632168146"})
 
 
 
@@ -103,7 +100,7 @@ def book(id, log):
 @login_required
 def api(isbn):
     if request.method == 'GET':
-        url = 'https://www.goodreads.com/book/review_counts.json'
+        url = ''
 
-        response = requests.get(url, params={"key": "odIyXgoUO32BFSKOfJwaEA", "isbns": "9781632168146"})
+        response = requests.get(url, )
         print(response.json())

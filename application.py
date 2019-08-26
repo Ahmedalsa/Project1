@@ -87,20 +87,53 @@ def logout():
     return redirect("/login")
 
 
-app.route("/book", method["GET", "POST"])
+app.route("/book/<int:id>", method["GET", "POST"])
 @login_required
 def book(id):
-    #getting the api from the website goodreads.
+    #getting the api from the website goodreads.com
     isbn = db.execute("SELECT isbn FROM books WHERE id = :id", {"id": id}).fetchone()
     response = requests.get("https://www.goodreads.com/book/review_counts.json", params={"key": "odIyXgoUO32BFSKOfJwaEA", "isbns": "9781632168146"})
+    d = response.json()
+    books = d["books"]
+    books_list = books[0]
+
+    #check if selected book exists.
+    check_book = db.execute("SELECT * FROM books WHERE id = :id", {"id": id}).fetchone()
+    if check_book is None:
+        return render_template("search.html")
+
+        book_reviews = db.execute("SELECT * FROM reviews WHERE book_id = :id", {"id": id}).fetchall()
+        user_id = session["user_id"]
+        if request.method.form == "POST":
+            book_review = request.form.get("review")
+            book_rating = request.form.get("rating")
+
+        #Checking that book reviews are not repeated.
+        check_reviews = db.execute("SELECT book_id, user_id FROM reviews WHERE book_id = :book_id AND user_id = :user_id",
+            {"book_id": id, "user_id": user_id}).fetchone()
+
+        if check_reviews:
+            return render_template("book.html", check_book=check_book, book_reviews=book_reviews, book_list=books_list, isbn=isbn, message="Reviewed Already!")
+        else:
+            db.execute("INSERT INTO reviews (rating, review, user_id, book_id) VALUES (:rating, :review, :user_id, :book_id)",
+                    {"rating": book_rating, "review": book_review, "user_id": user_id, "book_id": id})
+            db.commit()
+            book_reviews = db.execute("SELECT * FROM reviews WHERE book_id = :id", {"id": id}).fetchall()
+            return render_template("book.html", check_book=check_book, book_reviews=book_reviews, book_list=books_list, isbn=isbn)
+
+    return render_template("book.html", check_book=check_book, book_reviews=book_reviews, book_list=books_list, isbn=isbn)
+
+
+
+
+
 
 
 
 @app.route("/api/<string:isbn>", method["GET", "POST"])
 @login_required
 def api(isbn):
-    if request.method == 'GET':
-        url = ''
-
-        response = requests.get(url, )
-        print(response.json())
+    selected_book = db.execute("SELECT * FROM books WHERE isbn = :isbn", {"isbn": isbn})
+    if selected_book is None:
+        #return unprocessable entity error.
+        return jsonify({"error:" "isbn not vaild"}), 422

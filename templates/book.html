@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Book Page</title>
+    <link rel="stylesheet" href="stylesheet.css">
+  </head>
+  <body>
+    <h1>Details:</h1>
+    <ul>
+      <li>ISBN:</li>
+      <li>Title:</li>
+      <li>Author:</li>
+      <li>Year:</li>
+      <li>average rating:</li>
+      <li>Number of ratings:</li>
+    </ul>
+
+    <h1>Reviews:</h1>
+    {{% if reviews %}}
+    <ul>
+      {{% for review in reviews %}}
+      <li>Rating: {{ review.rating }}</li>
+      <li>Review:</li>
+      <br>
+      {{% endfor %}}
+    </ul>
+    {{% endif %}}
+    <div class="">
+      <form class="" action="index.html" method="post">
+        <input type="radio" name="rating" value="1">
+        <input type="radio" name="rating" value="2">
+        <input type="radio" name="rating" value="3">
+        <input type="radio" name="rating" value="4">
+        <input type="radio" name="rating" value="5">
+        <textarea name="review" rows="10" cols="55" placeholder="write your review"></textarea><br>
+      </form>
+    </div>
+  </body>
+</html>

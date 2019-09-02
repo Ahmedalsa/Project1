@@ -8,11 +8,12 @@
   <body>
     <h1>Login</h1>
     <div class="">
-      <form class="" action="application.py" method="get">
-        Username:<input type="text" name="username" value="text"><br>
-        Password:<input type="password" name="password" value="password">
+      <form class="" action="application.py" method="post">
+        <input type="text" name="username" value="{{request.form.username}}" placeholder="Username"><br>
+        <input type="password" name="password" value="{{request.form.password}}" placeholder="Password"><br>
+        <button class="btn btn-primary" type="submit">login</button>
       </form>
-      <a href="Signup.html">Not a member? Signup!</a>
+      <a href="signup.html">Not a member? Signup!</a>
     </div>
   </body>
 </html>

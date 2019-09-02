@@ -1,13 +1,14 @@
 import os
 
-from flask import Flask, session, render_template, request, redirect, url_for, login_required, jsonify
+from flask import Flask, session, render_template, request, redirect, url_for, jsonify
 from flask_session import Session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 import requests
+from jinja2 import Template
 
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='C:/Users/welcome/Downloads/project1/templates')
 
 # Check for environment variable
 if not os.getenv("DATABASE_URL"):
@@ -18,39 +19,39 @@ app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
-# Set up database
-engine = create_engine(os.getenv("postgres://jrmqlumszscete:7a7a8b6d39ca502a1f037d56b887670a944ef7eeac3773d84447a0fa4f1f93b1@ec2-107-20-198-176.compute-1.amazonaws.com:5432/d7e9ku4tq19i8e"))
-db = scoped_session(sessionmaker(bind=engine))
 
-class user(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(55))
-    password = db.Column(db.String(55))
+# Set up database
+engine = create_engine(os.getenv("DATABASE_URL"))
+db = scoped_session(sessionmaker(bind=engine))
+user = []
 
 
 @app.route("/")
 def index():
-    return render_template("signup.html")
 
-@app.route("/signup", method=['GET', 'POST'])
+
+
+    return render_template("index.html")
+
+
+@app.route("/signup", methods=["GET", "POST"])
 def signup():
-    if request.method == 'POST':
+    if request.method == "POST":
             #Read entered values from new user
-        username = request.form['username']
-        password = request.form['password']
-        #check if entered values  are valid
-        register = user(username = username, password = password)
-        db.add(register)
+        username = request.form.get("username")
+        password = request.form.get("password")
+        #enter values to the database.
+        register = "INSERT INTO users (username, password) VALUES (:username, :password)"
+        db.execute(register, {"username": username, "password": password})
         db.commit()
 
-        return redirect(url_for('/login'))
+        return render_template("login.html")
+    else:
+        return render_template("signup.html")
 
-    return render_template("signup.html")
 
 
-
-@app.route("/search", method=["GET", "POST"])
-@login_required
+@app.route("/search", methods=["GET", "POST"])
 def search():
     result = []
     isbn = request.form.get("isbn")
@@ -65,8 +66,7 @@ def search():
     return render_template("search.html", result=result)
 
 
-@app.route("/login", method=["GET", "POST"])
-@login_required
+@app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == 'POST':
 
@@ -77,18 +77,17 @@ def login():
     return render_template("login.html")
 
 @app.route("/logout")
-@login_required
 def logout():
 
     # Forget any user id
-    session.clear()
+    session["user_id"] = []
 
     # Redirect user to login form
-    return redirect("/login")
+    return render_template("index.html")
 
 
-app.route("/book/<int:id>", method["GET", "POST"])
-@login_required
+app.route("/book/<int:id>", methods=["GET", "POST"])
+
 def book(id):
     #getting the api from the website goodreads.com
     isbn = db.execute("SELECT isbn FROM books WHERE id = :id", {"id": id}).fetchone()
@@ -130,10 +129,25 @@ def book(id):
 
 
 
-@app.route("/api/<string:isbn>", method["GET", "POST"])
-@login_required
+@app.route("/api/<string:isbn>", methods=["GET", "POST"])
 def api(isbn):
     selected_book = db.execute("SELECT * FROM books WHERE isbn = :isbn", {"isbn": isbn})
     if selected_book is None:
         #return unprocessable entity error.
         return jsonify({"error:" "isbn not vaild"}), 422
+
+    response = requests.get("https://www.goodreads.com/book/review_counts.json", params={"key": "odIyXgoUO32BFSKOfJwaEA", "isbns": "9781632168146"})
+    d = response.json()
+    books = d["books"]
+    books_list = books[0]
+    print(books_list)
+    print(books_list['work_ratings_count'])
+
+    return jsonify({
+    "title": selected_book.title,
+    "author": selected_book.author,
+    "year": selected_book.year,
+    "isbn": selected_book.isbn,
+    "review_count": books_list['work_ratings_count'],
+    "average_score": books_list['average_rating']
+})

@@ -1,19 +1,17 @@
-<!DOCTYPE html>
-<html lang="en" dir="ltr">
-  <head>
-    <meta charset="utf-8">
-    <title>Login</title>
-    <link rel="stylesheet" href="stylesheet.css">
-  </head>
-  <body>
+{% extends "layout.html" %}
+
+{% block title %}
+    Login
+{% endblock %}
+
+{% block content %}
     <h1>Login</h1>
-    <div class="">
-      <form class="" action="application.py" method="post">
-        <input type="text" name="username" value="{{request.form.username}}" placeholder="Username"><br>
-        <input type="password" name="password" value="{{request.form.password}}" placeholder="Password"><br>
+      <form action="/login" method="post">
+        <div class="form-group">
+        <input type="text" name="username" class="form-control" placeholder="Username"><br>
+        <input type="password" name="password" class="form-control" placeholder="Password"><br>
         <button class="btn btn-primary" type="submit">login</button>
+      </div>
       </form>
       <a href="signup.html">Not a member? Signup!</a>
-    </div>
-  </body>
-</html>
+{% endblock %}

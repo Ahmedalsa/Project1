@@ -1,6 +1,6 @@
-import os
+import os, json
 
-from flask import Flask, session, render_template, request, redirect, url_for, jsonify
+from flask import Flask, session, render_template, request, redirect, url_for, jsonify, flash
 from flask_session import Session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -36,14 +36,30 @@ def index():
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
+    session.clear()
     if request.method == "POST":
             #Read entered values from new user
         username = request.form.get("username")
         password = request.form.get("password")
+        confirm = request.form.get("confirm")
+        #check for submitted username and password
+        if not username:
+            return render_template("error.html", message="Please provide a vaild username!")
+
+        check_for_user = db.execute("SELECT * FROM users WHERE username = :username",
+        {"username":username}).fetchone()
+
+        if not password:
+            return render_template("error.html", message="Please provide a valid password!")
+
+        if not confirm:
+            return render_template("error.html", message="Please provide a valid confirmation!")
         #enter values to the database.
         register = "INSERT INTO users (username, password) VALUES (:username, :password)"
         db.execute(register, {"username": username, "password": password})
         db.commit()
+
+        flash('Account created', 'info')
 
         return render_template("login.html")
     else:
@@ -68,59 +84,99 @@ def search():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if request.method == 'POST':
+    session.clear()
 
-        session['username'] = request.form['username']
-        session['email'] = request.form['email']
-        session['id'] = request.form['id']
-        return redirect(url_for('index'))
-    return render_template("login.html")
+    username = request.form.get("username")
+
+    if request.method == "POST":
+        password = request.form.get("password")
+        #check for submitted username and password
+        if not username:
+            return render_template("error.html", message="Please provide a vaild username!")
+
+        result = db.execute("SELECT * FROM users WHERE username = :username",
+        {"username":username}).fetchone()
+        if result = None:
+            return render_template("error.html", message="invalid username and/or password")
+
+        session["user_id"] = result[0]
+        session["username"] = result[1]
+        return redirect("/")
+    else:
+        return render_template("login.html")
 
 @app.route("/logout")
 def logout():
 
-    # Forget any user id
-    session["user_id"] = []
+    #Forget user id
+    session.clear()
 
-    # Redirect user to login form
-    return render_template("index.html")
+    #Redirect the user to the login form
+    return redirect("/")
 
 
-app.route("/book/<int:id>", methods=["GET", "POST"])
+app.route("/book/<int:isbn>", methods=["GET", "POST"])
 
-def book(id):
-    #getting the api from the website goodreads.com
-    isbn = db.execute("SELECT isbn FROM books WHERE id = :id", {"id": id}).fetchone()
-    response = requests.get("https://www.goodreads.com/book/review_counts.json", params={"key": "odIyXgoUO32BFSKOfJwaEA", "isbns": "9781632168146"})
-    d = response.json()
-    books = d["books"]
-    books_list = books[0]
+def book(isbn):
+    if request.method == "POST":
+        current = session["user_id"]
+        book_review = request.form.get("review")
+        book_rating = request.form.get("rating")
+        #search book id using the isbn number.
+        selected_book = db.execute("SELECT id FROM books WHERE isbn = :isbn", {"isbn": isbn})
+        #save as a variable.
+        bookid = selected_book.fetchone()
+        bookid = bookid[0]
+
+        book_reviews = db.execute("SELECT * FROM reviews WHERE user_id = :user_id AND book_id = :book_id",
+         {"user_id": current, "book_id": bookid})
+
+         if book_reviews.count == 1:
+             flash('You already submitted a review for this book', 'warning')
+             return redirect("/book/" + isbn)
+
+        #to be save in the database.
+        rating = int(rating)
+
+        db.execute("INSERT INTO reviews (user_id, book_id, review, rating) VALUES (:user_id, :book_id, :review, :rating)",
+                {"user_id": current, "book_id": bookid, "review": review, "rating": rating})
+        db.commit()
+
+        flash('submitted', 'info')
+        return redirect("/book/" + isbn)
+
+    else:
+        selected = db.execute("SELECT isbn, title, author, year FROM books WHERE isbn = :isbn", {"isbn": isbn})
+        info = selected.fetchall()
+
+        #read API key from goodreads.
+        key = os.getenv("GOODREADS_KEY")
+        #getting the api from the website goodreads.com
+        response = requests.get("https://www.goodreads.com/book/review_counts.json", params={"key": key, "isbns": isbn})
+        json_response = response.json()
+
+        #save user's book as a variable.
+        user_book = selected.fetchone()
+        user_book = user_book[0]
+
+        review_query = db.execute("SELECT users.username, comment, rating, \
+                            to_char(time, 'DD Mon YY - HH24:MI:SS') as time \
+                            FROM users \
+                            INNER JOIN reviews \
+                            ON users.id = reviews.user_id \
+                            WHERE book_id = :book \
+                            ORDER BY time",
+                            {"book": book})
+
+        reviews = review_query.fetchall()
+        return render_template("book.html", info=info, reviews=reviews)
+
 
     #check if selected book exists.
-    check_book = db.execute("SELECT * FROM books WHERE id = :id", {"id": id}).fetchone()
-    if check_book is None:
-        return render_template("search.html")
 
-        book_reviews = db.execute("SELECT * FROM reviews WHERE book_id = :id", {"id": id}).fetchall()
-        user_id = session["user_id"]
-        if request.method.form == "POST":
-            book_review = request.form.get("review")
-            book_rating = request.form.get("rating")
 
         #Checking that book reviews are not repeated.
-        check_reviews = db.execute("SELECT book_id, user_id FROM reviews WHERE book_id = :book_id AND user_id = :user_id",
-            {"book_id": id, "user_id": user_id}).fetchone()
 
-        if check_reviews:
-            return render_template("book.html", check_book=check_book, book_reviews=book_reviews, book_list=books_list, isbn=isbn, message="Reviewed Already!")
-        else:
-            db.execute("INSERT INTO reviews (rating, review, user_id, book_id) VALUES (:rating, :review, :user_id, :book_id)",
-                    {"rating": book_rating, "review": book_review, "user_id": user_id, "book_id": id})
-            db.commit()
-            book_reviews = db.execute("SELECT * FROM reviews WHERE book_id = :id", {"id": id}).fetchall()
-            return render_template("book.html", check_book=check_book, book_reviews=book_reviews, book_list=books_list, isbn=isbn)
-
-    return render_template("book.html", check_book=check_book, book_reviews=book_reviews, book_list=books_list, isbn=isbn)
 
 
 
@@ -131,17 +187,14 @@ def book(id):
 
 @app.route("/api/<string:isbn>", methods=["GET", "POST"])
 def api(isbn):
-    selected_book = db.execute("SELECT * FROM books WHERE isbn = :isbn", {"isbn": isbn})
+
+
+
+    selected_book = db.execute("SELECT * FROM books WHERE isbn = :isbn", {"isbn": isbn}).fetchone()
     if selected_book is None:
         #return unprocessable entity error.
-        return jsonify({"error:" "isbn not vaild"}), 422
+        return jsonify({"success:" "False"}), 422
 
-    response = requests.get("https://www.goodreads.com/book/review_counts.json", params={"key": "odIyXgoUO32BFSKOfJwaEA", "isbns": "9781632168146"})
-    d = response.json()
-    books = d["books"]
-    books_list = books[0]
-    print(books_list)
-    print(books_list['work_ratings_count'])
 
     return jsonify({
     "title": selected_book.title,

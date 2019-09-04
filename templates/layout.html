@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>{% block title %}{% endblock %}</title>
+    <link rel="stylesheet" href="stylesheet.css">
+  </head>
+  <body>
+    {% if session.user_id %}
+        <a href="/">search</a>
+        <a href="#">{{ session.user_name }}</a>
+        <a href="/logout">LogOut</a>
+    {% else %}
+       <a href="/signup">Signup</a>
+       <a href="/login">Login</a>
+    {% endif %}
+
+    {% if get_flashed_messages() %}
+          <div class="alert" role="alert">
+            {{ get_flashed_messages() | join(" ") }}
+          </div>
+          {% endif %}
+          <main class="container p-5">
+                  {% block content %}
+                  {% endblock %}
+              </main>
+
+  </body>
+</html>

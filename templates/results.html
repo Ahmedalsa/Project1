@@ -1,0 +1,24 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Results
+{% endblock %}
+
+{% block content %}
+    <h1>Searh results</h1>
+
+    {% for book in books %}
+
+        <div class="container results-container">
+        {{book['title']}}
+        {{book['author']}}
+        {{book['year']}}
+        {{book['isbn']}}
+      </div>
+
+      <div class="">
+        <a href="/book/{{book['isbn']}}">Book Info</a>
+      </div>
+    {% endfor %}
+
+{% endblock %}

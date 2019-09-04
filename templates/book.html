@@ -1,40 +1,56 @@
-<!DOCTYPE html>
-<html lang="en" dir="ltr">
-  <head>
-    <meta charset="utf-8">
-    <title>Book Page</title>
-    <link rel="stylesheet" href="stylesheet.css">
-  </head>
-  <body>
-    <h1>Details:</h1>
-    <ul>
-      <li>ISBN:</li>
-      <li>Title:</li>
-      <li>Author:</li>
-      <li>Year:</li>
-      <li>average rating:</li>
-      <li>Number of ratings:</li>
-    </ul>
+{% extends "layout.html" %}
 
-    <h1>Reviews:</h1>
-    {{% if reviews %}}
-    <ul>
-      {{% for review in reviews %}}
-      <li>Rating: {{ review.rating }}</li>
-      <li>Review:</li>
-      <br>
-      {{% endfor %}}
-    </ul>
-    {{% endif %}}
-    <div class="">
-      <form class="" action="index.html" method="post">
-        <input type="radio" name="rating" value="1">
-        <input type="radio" name="rating" value="2">
-        <input type="radio" name="rating" value="3">
-        <input type="radio" name="rating" value="4">
-        <input type="radio" name="rating" value="5">
-        <textarea name="review" rows="10" cols="55" placeholder="write your review"></textarea><br>
-      </form>
+{% block title %}
+    Book Info
+{% endblock %}
+
+{% block content %}
+   <div class="">
+    <h1>{{bookInfo[0]['title']}}</h1>
+    <h4>Written by: {{bookInfo[0]['author']}}</h4>
+    <h4>Publication Year: {{bookInfo[0]['year']}}</h4>
+    <h4>ISBN: {{bookInfo[0]['isbn']}}</h4>
+  </div>
+
+  <div class="">
+    <h4>Ratings: {{bookInfo[1]['work_ratings_count']}}</h4>
+    <h4>Average rating: {{bookInfo[1]['average_rating']}}</h4>
+    <h4><a href="https://www.goodreads.com/search?q={{bookInfo[0]['title']}}">Goodreads page</a>
+</h4>
+  </div>
+
+  <h4>Write a review</h4>
+
+  <form method="POST" class="form">
+    <div class="form-group">
+      <select id="rating" name="rating" class="form-control" required>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+      </select>
     </div>
-  </body>
-</html>
+
+    <div class="input-group">
+      <div class="input-group-prepend">
+        <textarea name="review" class="textarea" placeholder="Comment Here"></textarea>
+      </div>
+      <button class="btn" type="button" name="button">Post</button>
+    </div>
+  </form>
+
+
+  <div id="userReviews">
+    {% for review in reviews %}
+    <div class="list-group">
+      <div class="">
+      <h5>{{review['username']}}</h5>
+      <p>{{review['time']}}</p>
+    </div>
+    <p>{{review['review']}}</p>
+    <p>{{review['rating']}}</p>
+    </div>
+    {% endfor %}
+  </div>
+{% endblock %}

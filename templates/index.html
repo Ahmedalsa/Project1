@@ -1,28 +1,15 @@
-<!DOCTYPE html>
-<html lang="en" dir="ltr">
-  <head>
-    <meta charset="utf-8">
-    <title>Welcome</title>
-    <link rel="stylesheet" href="stylesheet.css">
-  </head>
-  <body>
-    <div class="">
-    <form class="" action="{{url_for('logout')}}" method="get">
-      <button type="submit" name="button" class="btn btn-primary">logout</button>
-    </form>
-    </div>
+{% extends "layout.html" %}
 
-    <div class="">
-      <form class="" action="/signup" method="get">
-        <button type="submit" class="btn btn-primary" name="button"></button>
+{% block title %}
+    Index
+{% endblock %}
+
+{% block content %}
+    <h1>Searh here</h1>
+      <form action="/search" method="GET">
+        <div class="form-group">
+        <input type="text" name="book" class="form-control" placeholder="ISBN, Title or Author"><br>
+      </div>
+      <button class="btn btn-primary" type="submit">Searh</button>
       </form>
-    </div>
-    <br>
-    <div class="">
-      <form class="" action="{{url_for(index)}}" method="post">
-        <input type="text" name="username"  placeholder="Username"><br>
-        <input type="password" name="password" placeholder="Password"><br>
-        <button class="btn btn-primary" type="submit">login</button>
-    </div>
-  </body>
-</html>
+{% endblock %}

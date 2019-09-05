@@ -6,8 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 import requests
 from jinja2 import Template
-from django.conf import settings
-from django.contrib.auth.decorators import login_required
+from decorators import login_required
 
 
 app = Flask(__name__, template_folder='C:/Users/welcome/Downloads/project1/templates')
@@ -114,7 +113,7 @@ def login():
 
         result = db.execute("SELECT * FROM users WHERE username = :username",
         {"username":username}).fetchone()
-        if result = None:
+        if result is None:
             return render_template("error.html", message="invalid username and/or password")
 
         session["user_id"] = result[0]
@@ -150,7 +149,7 @@ def book(isbn):
         book_reviews = db.execute("SELECT * FROM reviews WHERE user_id = :user_id AND book_id = :book_id",
          {"user_id": current, "book_id": bookid})
 
-         if book_reviews.rowcount == 1:
+        if book_reviews.rowcount == 1:
              flash('You already submitted a review for this book', 'warning')
              return redirect("/book/" + isbn)
 

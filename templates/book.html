@@ -6,16 +6,16 @@
 
 {% block content %}
    <div class="">
-    <h1>{{bookInfo[0]['title']}}</h1>
-    <h4>Written by: {{bookInfo[0]['author']}}</h4>
-    <h4>Publication Year: {{bookInfo[0]['year']}}</h4>
-    <h4>ISBN: {{bookInfo[0]['isbn']}}</h4>
+    <h1>{{bookinfo[0]['title']}}</h1>
+    <h4>Written by: {{bookinfo[0]['author']}}</h4>
+    <h4>Publication Year: {{bookinfo[0]['year']}}</h4>
+    <h4>ISBN: {{bookinfo[0]['isbn']}}</h4>
   </div>
 
   <div class="">
-    <h4>Ratings: {{bookInfo[1]['work_ratings_count']}}</h4>
-    <h4>Average rating: {{bookInfo[1]['average_rating']}}</h4>
-    <h4><a href="https://www.goodreads.com/search?q={{bookInfo[0]['title']}}">Goodreads page</a>
+    <h4>Ratings: {{bookinfo[1]['work_ratings_count']}}</h4>
+    <h4>Average rating: {{bookinfo[1]['average_rating']}}</h4>
+    <h4><a href="https://www.goodreads.com/search?q={{bookinfo[0]['title']}}">Goodreads page</a>
 </h4>
   </div>
 

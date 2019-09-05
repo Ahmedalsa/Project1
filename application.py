@@ -6,6 +6,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 import requests
 from jinja2 import Template
+from django.conf import settings
+from django.contrib.auth.decorators import login_required
 
 
 app = Flask(__name__, template_folder='C:/Users/welcome/Downloads/project1/templates')
@@ -29,17 +31,17 @@ user = []
 @app.route("/")
 def index():
 
-
-
     return render_template("index.html")
 
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     session.clear()
+
+    username = request.form.get("username")
+
     if request.method == "POST":
             #Read entered values from new user
-        username = request.form.get("username")
         password = request.form.get("password")
         confirm = request.form.get("confirm")
         #check for submitted username and password
@@ -49,17 +51,20 @@ def signup():
         check_for_user = db.execute("SELECT * FROM users WHERE username = :username",
         {"username":username}).fetchone()
 
-        if not password:
+        if check_for_user:
+            return render_template("error.html", message="That user already exists!")
+
+        elif not password:
             return render_template("error.html", message="Please provide a valid password!")
 
-        if not confirm:
+        elif not confirm:
             return render_template("error.html", message="Please provide a valid confirmation!")
         #enter values to the database.
         register = "INSERT INTO users (username, password) VALUES (:username, :password)"
         db.execute(register, {"username": username, "password": password})
         db.commit()
 
-        flash('Account created', 'info')
+        flash('User created', 'info')
 
         return render_template("login.html")
     else:
@@ -68,18 +73,29 @@ def signup():
 
 
 @app.route("/search", methods=["GET", "POST"])
+@login_required
 def search():
-    result = []
-    isbn = request.form.get("isbn")
-    title = request.form.get("title")
-    author = request.form.get("author")
-    year = request.form.get("year")
-    sql_string = "SELECT * FROM books WHERE isbn LIKE :isbn OR title = :title OR author = :author OR year LIKE :year "
-    if request.method == "POST":
-        result = db.execute(sql_string, {"isbn": f"%{isbn}%", "title": title, "author": author, "year": year}).fetchall()
-        return render_template("search.html", result=result)
+    #check if the book id is valid.
+    if not request.args.get("book"):
+        return render_template("error.html", message="Invalid book id")
 
-    return render_template("search.html", result=result)
+        #Searh input query.
+        query = "%" + request.args.get("book") + "%"
+
+        #convert query to all caps.
+        query = query.title()
+
+        sql_string = "SELECT isbn, title, author, year FROM books WHERE isbn LIKE :query OR title = :query OR author = :query OR year LIKE :query "
+        result = db.execute(sql_string, {"query": query})
+
+
+        #in case book is not found.
+        if result.rowcount == 0:
+            return render_template("error.html", message="Book Not Found!")
+
+        books = result.fetchall()
+
+        return render_template("results.html", books=books)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -93,6 +109,8 @@ def login():
         #check for submitted username and password
         if not username:
             return render_template("error.html", message="Please provide a vaild username!")
+        elif not request.form.get("password"):
+            return render_template("error.html", message="Please provide a vaild password!")
 
         result = db.execute("SELECT * FROM users WHERE username = :username",
         {"username":username}).fetchone()
@@ -106,21 +124,22 @@ def login():
         return render_template("login.html")
 
 @app.route("/logout")
+@login_required
 def logout():
 
     #Forget user id
     session.clear()
 
-    #Redirect the user to the login form
+    #Redirect the user to the index page.
     return redirect("/")
 
 
 app.route("/book/<int:isbn>", methods=["GET", "POST"])
-
+@login_required
 def book(isbn):
     if request.method == "POST":
         current = session["user_id"]
-        book_review = request.form.get("review")
+        comment = request.form.get("comment")
         book_rating = request.form.get("rating")
         #search book id using the isbn number.
         selected_book = db.execute("SELECT id FROM books WHERE isbn = :isbn", {"isbn": isbn})
@@ -131,7 +150,7 @@ def book(isbn):
         book_reviews = db.execute("SELECT * FROM reviews WHERE user_id = :user_id AND book_id = :book_id",
          {"user_id": current, "book_id": bookid})
 
-         if book_reviews.count == 1:
+         if book_reviews.rowcount == 1:
              flash('You already submitted a review for this book', 'warning')
              return redirect("/book/" + isbn)
 
@@ -139,24 +158,30 @@ def book(isbn):
         rating = int(rating)
 
         db.execute("INSERT INTO reviews (user_id, book_id, review, rating) VALUES (:user_id, :book_id, :review, :rating)",
-                {"user_id": current, "book_id": bookid, "review": review, "rating": rating})
+                {"user_id": current, "book_id": bookid, "comment": comment, "rating": rating})
         db.commit()
 
         flash('submitted', 'info')
         return redirect("/book/" + isbn)
 
     else:
-        selected = db.execute("SELECT isbn, title, author, year FROM books WHERE isbn = :isbn", {"isbn": isbn})
-        info = selected.fetchall()
+        selected_isbn = db.execute("SELECT isbn, title, author, year FROM books WHERE isbn = :isbn", {"isbn": isbn})
+        bookinfo = selected_isbn.fetchall()
 
         #read API key from goodreads.
         key = os.getenv("GOODREADS_KEY")
         #getting the api from the website goodreads.com
         response = requests.get("https://www.goodreads.com/book/review_counts.json", params={"key": key, "isbns": isbn})
         json_response = response.json()
+        #pass json response to bookinfo.
+        json_response = json_response['books'][0]
+        bookinfo.append(json_response)
+
+        #Searhing through books by id through isbns.
+        selected_id = db.execute("SELECT id FROM books WHERE isbn = :isbn", {"isbn": isbn})
 
         #save user's book as a variable.
-        user_book = selected.fetchone()
+        user_book = selected_id.fetchone()
         user_book = user_book[0]
 
         review_query = db.execute("SELECT users.username, comment, rating, \
@@ -169,23 +194,11 @@ def book(isbn):
                             {"book": book})
 
         reviews = review_query.fetchall()
-        return render_template("book.html", info=info, reviews=reviews)
-
-
-    #check if selected book exists.
-
-
-        #Checking that book reviews are not repeated.
-
-
-
-
-
-
-
+        return render_template("book.html", bookinfo=bookinfo, reviews=reviews)
 
 
 @app.route("/api/<string:isbn>", methods=["GET", "POST"])
+@login_required
 def api(isbn):
 
 
@@ -193,7 +206,7 @@ def api(isbn):
     selected_book = db.execute("SELECT * FROM books WHERE isbn = :isbn", {"isbn": isbn}).fetchone()
     if selected_book is None:
         #return unprocessable entity error.
-        return jsonify({"success:" "False"}), 422
+        return jsonify({"success": "False"}), 422
 
 
     return jsonify({

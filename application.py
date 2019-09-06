@@ -201,15 +201,15 @@ def book(isbn):
 @login_required
 def api(isbn):
 
-    sql_string = "SELECT users.username, comment, rating, \
-                        to_char(time, 'DD Mon YY - HH24:MI:SS') as time \
-                        FROM users \
+    sql_string = "SELECT title, author, year, isbn, \
+                        COUNT(reviews.id) as review_count,\
+                        AVG(reviews.rating) as average_score \
                         INNER JOIN reviews \
-                        ON users.id = reviews.user_id \
-                        WHERE book_id = :book \
-                        ORDER BY time"
+                        ON books.id = reviews.book_id \
+                        WHERE isbn = :isbn \
+                        ORDER BY year"
 
-    selected_book = db.execute("SELECT * FROM books WHERE isbn = :isbn", {"isbn": isbn}).fetchone()
+    selected_book = db.execute(sql_string, {"isbn": isbn}).fetchone()
     if selected_book is None:
         #return unprocessable entity error.
         return jsonify({"success": "False"}), 422

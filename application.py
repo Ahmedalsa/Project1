@@ -201,7 +201,13 @@ def book(isbn):
 @login_required
 def api(isbn):
 
-
+    sql_string = "SELECT users.username, comment, rating, \
+                        to_char(time, 'DD Mon YY - HH24:MI:SS') as time \
+                        FROM users \
+                        INNER JOIN reviews \
+                        ON users.id = reviews.user_id \
+                        WHERE book_id = :book \
+                        ORDER BY time"
 
     selected_book = db.execute("SELECT * FROM books WHERE isbn = :isbn", {"isbn": isbn}).fetchone()
     if selected_book is None:

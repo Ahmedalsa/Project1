@@ -28,6 +28,7 @@ user = []
 
 
 @app.route("/")
+@login_required
 def index():
 
     return render_template("index.html")
@@ -37,10 +38,10 @@ def index():
 def signup():
     session.clear()
 
-    username = request.form.get("username")
 
     if request.method == "POST":
             #Read entered values from new user
+        username = request.form.get("username")
         password = request.form.get("password")
         confirm = request.form.get("confirm")
         #check for submitted username and password
@@ -71,30 +72,30 @@ def signup():
 
 
 
-@app.route("/search", methods=["GET", "POST"])
+@app.route("/search", methods=["GET"])
 @login_required
 def search():
     #check if the book id is valid.
     if not request.args.get("book"):
         return render_template("error.html", message="Invalid book id")
 
-        #Searh input query.
-        query = "%" + request.args.get("book") + "%"
+    #Searh input query.
+    query = "%" + request.args.get("book") + "%"
 
-        #convert query to all caps.
-        query = query.title()
+    #convert query to all caps.
+    query = query.title()
 
-        sql_string = "SELECT isbn, title, author, year FROM books WHERE isbn LIKE :query OR title = :query OR author = :query OR year LIKE :query "
-        result = db.execute(sql_string, {"query": query})
+    sql_string = "SELECT isbn, title, author, year FROM books WHERE isbn LIKE :query OR title LIKE :query OR author LIKE :query"
+    result = db.execute(sql_string, {"query": query})
 
 
-        #in case book is not found.
-        if result.rowcount == 0:
-            return render_template("error.html", message="Book Not Found!")
+    #in case book is not found.
+    if result.rowcount == 0:
+        return render_template("error.html", message="Book Not Found!")
 
-        books = result.fetchall()
+    books = result.fetchall()
 
-        return render_template("results.html", books=books)
+    return render_template("results.html", books=books)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -133,7 +134,7 @@ def logout():
     return redirect("/")
 
 
-app.route("/book/<int:isbn>", methods=["GET", "POST"])
+app.route("/book/<isbn>/", methods=["GET", "POST"])
 @login_required
 def book(isbn):
     if request.method == "POST":
@@ -150,7 +151,7 @@ def book(isbn):
          {"user_id": current, "book_id": bookid})
 
         if book_reviews.rowcount == 1:
-             flash('You already submitted a review for this book', 'warning')
+             flash('Cannot Add more than 1 review', 'warning')
              return redirect("/book/" + isbn)
 
         #to be save in the database.
@@ -193,7 +194,7 @@ def book(isbn):
                             {"book": book})
 
         reviews = review_query.fetchall()
-        return render_template("book.html", bookinfo=bookinfo, reviews=reviews)
+    return render_template("book.html", bookinfo=bookinfo, reviews=reviews)
 
 
 @app.route("/api/<string:isbn>", methods=["GET", "POST"])

@@ -9,7 +9,7 @@ from jinja2 import Template
 from decorators import login_required
 
 
-app = Flask(__name__, template_folder='C:/Users/welcome/Downloads/project1/templates')
+app = Flask(__name__)
 
 # Check for environment variable
 if not os.getenv("DATABASE_URL"):
@@ -134,7 +134,7 @@ def logout():
     return redirect("/")
 
 
-app.route("/book/<isbn>/", methods=["GET", "POST"])
+app.route("/book/<isbn>", methods=["GET", "POST"])
 @login_required
 def book(isbn):
     if request.method == "POST":
@@ -197,29 +197,29 @@ def book(isbn):
     return render_template("book.html", bookinfo=bookinfo, reviews=reviews)
 
 
-@app.route("/api/<string:isbn>", methods=["GET", "POST"])
+@app.route("/api/<isbn>", methods=["GET"])
 @login_required
 def api(isbn):
 
     sql_string = "SELECT title, author, year, isbn, \
-                        COUNT(reviews.id) as review_count,\
-                        AVG(reviews.rating) as average_score \
-                        INNER JOIN reviews \
-                        ON books.id = reviews.book_id \
-                        WHERE isbn = :isbn \
-                        ORDER BY year"
+                    COUNT(reviews.id) as review_count, \
+                    AVG(reviews.rating) as average_score \
+                    FROM books \
+                    INNER JOIN reviews \
+                    ON books.id = reviews.book_id \
+                    WHERE isbn = :isbn \
+                    GROUP BY title, author, year, isbn"
 
-    selected_book = db.execute(sql_string, {"isbn": isbn}).fetchone()
-    if selected_book is None:
+    #fetch the book details from query.
+    query = db.execute(sql_string, {"isbn": isbn})
+    selected_book = query.fetchone()
+    if query.rowcount != 1:
         #return unprocessable entity error.
         return jsonify({"success": "False"}), 422
 
+    #use dict() function to convert result to create a dictionary
+    book_api = dict(selected_book)
 
-    return jsonify({
-    "title": selected_book.title,
-    "author": selected_book.author,
-    "year": selected_book.year,
-    "isbn": selected_book.isbn,
-    "review_count": books_list['work_ratings_count'],
-    "average_score": books_list['average_rating']
-})
+    #Limiting floats to two decimal points
+    book_api['average_score'] = float('%.2f'%(book_api['average_score']))
+    return jsonify(book_api)

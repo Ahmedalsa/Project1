@@ -6,15 +6,15 @@
 
 {% block content %}
    <div class="col">
-    <h1>{{bookinfo[0]['title']}}</h1>
-    <h4>Written by: {{bookinfo[0]['author']}}</h4>
-    <h4>Publication Year: {{bookinfo[0]['year']}}</h4>
-    <h4>ISBN: {{bookinfo[0]['isbn']}}</h4>
+    <h1>{{ bookid[0]["title"] }}</h1>
+    <h4>Written by: {{ bookid[0]["author"] }}</h4>
+    <h4>Publication Year: {{bookid[0]["year"]}}</h4>
+    <h4>ISBN: {{bookid[0]["isbn"]}}</h4>
   </div>
 
   <div class="col">
-    <h4>Ratings: {{bookinfo[1]['work_ratings_count']}}</h4>
-    <h4>Average rating: {{bookinfo[1]['average_rating']}}</h4>
+    <h4>Ratings: {{json_data[1]['work_ratings_count']}}</h4>
+    <h4>Average rating: {{json_data[1]['average_rating']}}</h4>
     <h4><a href="https://www.goodreads.com/search?q={{bookinfo[0]['title']}}">Goodreads page</a>
 </h4>
   </div>
@@ -46,11 +46,35 @@
     <div class="list-group">
       <div class="">
       <h5>{{review['username']}}</h5>
-      <p>{{review['time']}}</p>
     </div>
     <p>{{review['review']}}</p>
     <p>{{review['rating']}}</p>
     </div>
     {% endfor %}
+    {% else %}
+     <div>
+       <p>No reviews.</p>
+     </div>
   </div>
+
+  {% if not user_review %}
+  <h2>Add a review</h2>
+    <form action="{{ url_for('book', isbn = bookid["isbn"]) }}" method="post">
+        <fieldset>
+            <div class="form-group">
+                <label for="rating">Rating (on a scale of 1 to 5):</label>
+                <input class="form-control" type="text" size="1" name="rating" placeholder="Rating">
+            </div>
+            <div class="form-group">
+                <label for="review">Review:</label>
+                <input class="form-control" type="text" name="review" placeholder="Enter Review Here">
+            </div>
+            <div class="form-group">
+                <button class="btn btn-info" type="submit">Add Review</button>
+            </div>
+        </fieldset>
+    </form>
+  {% endif %}
+
+
 {% endblock %}

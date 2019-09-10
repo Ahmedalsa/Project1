@@ -4,9 +4,11 @@ from flask import Flask, session, render_template, request, redirect, url_for, j
 from flask_session import Session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
-import requests
+import requests, re
 from jinja2 import Template
 from decorators import login_required
+from goodreads import GoodreadsAPI
+
 
 
 app = Flask(__name__)
@@ -134,50 +136,75 @@ def logout():
     return redirect("/")
 
 
-app.route("/book/<isbn>", methods=["GET", "POST"])
+app.route("/book/<string:isbn>/", methods=["GET", "POST"])
 @login_required
 def book(isbn):
-    #search book id using the isbn number.
-    selected_book = db.execute("SELECT * FROM books WHERE isbn = :isbn", {"isbn": isbn})
-    #save as a variable.
-    bookid = selected_book.fetchone()
-    #read API key from goodreads.
-    key = os.getenv("GOODREADS_KEY")
-    #getting the api from the website goodreads.com
+    #search book_id using the isbn number.
+    user_id = db.execute("SELECT id FROM public.users WHERE username = :username", {"username": session["current_user"]}).fetchone()[0]
 
-    response = requests.get("https://www.goodreads.com/book/review_counts.json", params={"key": key, "isbns": isbn})
-    json_response = response.json()
-    #pass json response to bookinfo.
-    json_data = json_response['books'][0]
+    # Get the book details
+    book = db.execute("SELECT * FROM public.book WHERE isbn = :isbn", {"isbn": isbn}).fetchone()
+    if book is None:
+        flash("This book is not in our system.")
+        return redirect(url_for('index'))
 
-    query = db.execute("SELECT users.id, users.username, books.title, reviews.rating, reviews.review FROM reviews JOIN books ON reviews.isbn_book = books.isbn JOIN users ON reviews.id = users.id",
-                        {"isbn": isbn})
+    else: # Get the book statistics from GoodreadsAPI and database
+        review_statistics = GoodreadsAPI.review_data_isbn(isbn)
 
-    reviews = review_query.fetchall()
+        if db.execute("SELECT rating FROM public.reviews WHERE isbn_book = :isbn", {"isbn": isbn}).rowcount == 0:
+            average_score = 0
+            review_count = 0
+        else:
+            review_count = db.execute("SELECT COUNT(rating) FROM public.reviews WHERE isbn_book = :isbn", {"isbn": isbn}).fetchone()[0]
 
-    user_review = False
+            average_score = db.execute("SELECT AVG(rating) FROM public.reviews WHERE isbn_book = :isbn", {"isbn": isbn}).fetchone()[0]
 
-    for review in reviews:
-        print(review["review"])
-        if review["id"] == session["user_id"]:
-            user_review = True
-            print(user_review)
+    # Show all the user reviews
+    reviews = db.execute("SELECT username, review, rating FROM public.users FULL OUTER JOIN public.reviews ON public.user.id = public.reviews.username_id WHERE isbn_book = :isbn", {"isbn": isbn})
+
+    # Check if user has already added a # REVIEW:
+    cur = db.execute("SELECT * FROM public.reviews WHERE (username_id = :user_id) AND (isbn_book = :isbn)", {"user_id": user_id, "isbn": isbn})
+
+    if cur.rowcount > 0:
+        reviewed = True
+        rating = cur.fetchone()[3]
+
+    else:
+        reviewed = False
+        rating = None
+
+    # Add review
     if request.method == "POST":
-        if not user_review:
-            current = session["user_id"]
-            review = request.form.get("review")
-            book_rating = request.form.get("rating")
+        rating = int(request.form.get("rating"))
+        review = request.form.get("review")
 
-            db.execute("INSERT INTO reviews(review, rating, id, isbn_book) VALUES (:review, :rating, :id, :isbn_book)",
-                    {"review":review, "rating":rating, "id":session["user_id"], "isbn_book": isbn})
+        #check for review rating
+        if rating > 5 or rating < 1:
+            flash("Please try again later.")
+            return redirect(url_for('book', isbn=isbn))
+
+        if db.execute("SELECT * FROM public.reviews WHERE (username_id = :user_id) AND (isbn_book = :isbn)", {"user_id": user_id, "isbn": isbn}).rowcount > 0:
+            flash("It seems you've already reviewed this book.")
+
+        else:
+            db.execute("INSERT INTO public.reviews (username_id, isbn_book, review, rating) VALUES (:user_id, :book_isbn, :review, :rating)", {"user_id": user_id, "book_isbn": isbn, "review": review, "rating": rating})
+
             db.commit()
 
-    return render_template("book.html", bookid=bookid, json_data=json_data, reviews=reviews, user_review=user_review)
+            flash("Review added successfully")
+            return redirect(url_for('book', isbn=isbn))
+
+    return render_template("book.html", book=book, reviewed=reviewed, rating=rating, reviews=reviews, review_statistics=review_statistics, review_count=review_count, average_score=str(round(average_score,2)), user=session.get('current_user'))
 
 
 @app.route("/api/<string:isbn>", methods=["GET"])
 @login_required
 def api(isbn):
+    #read API key from goodreads.
+    key = os.getenv("GOODREADS_KEY")
+    #getting the api from the website goodreads.com
+    response = requests.get("https://www.goodreads.com/book/review_counts.json", params={"key": key, "isbns": isbn}).json()
+
 
     sql_string = "SELECT * FROM books WHERE isbn = :isbn"
 
@@ -188,18 +215,19 @@ def api(isbn):
         #return unprocessable entity error.
         return jsonify({"success": "False"}), 422
 
-    review_count = db.execute("SELECT COUNT(*) FROM reviews WHERE isbn_book = :isbn", {"isbn": isbn}).first()
-    average = db.execute("SELECT ROUND(AVG(rating::DECIMAL),2) FROM reviews WHERE isbn_book = :isbn", {"isbn": isbn}).first()
-
-    if average is not None:
-        average_rating = average[0]
+    if db.execute("SELECT review_rating FROM public.reviews WHERE book_isbn = :isbn", {"isbn": isbn}).rowcount == 0:
+        average_score = 0
+        review_count = 0
     else:
-        average_rating = 0
+        review_count = db.execute("SELECT COUNT(rating) FROM public.reviews WHERE isbn_book = :isbn", {"isbn": isbn}).fetchone()[0]
 
-    return jsonify("title": book_in_db["title"],
-                    "author": book_in_db["author"],
-                    "year": book_in_db["year"],
-                    "isbn": book_in_db["isbn"],
-                    "review_count": review_count[0],
-                    "average_rating": average_rating
-                    })
+        average_score = db.execute("SELECT AVG(rating) FROM public.reviews WHERE isbn_book = :isbn", {"isbn": isbn}).fetchone()[0]
+
+    return jsonify({
+            "title": selected_book.title,
+            "author": selected_book.author,
+            "year": selected_book.year,
+            "isbn": selected_book.isbn,
+            "review_count": str(review_count),
+            "average_score": str(round(average_score,2))
+    })

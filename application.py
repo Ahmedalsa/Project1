@@ -7,7 +7,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 import requests, re
 from jinja2 import Template
 from decorators import login_required
-from goodreads import GoodreadsAPI
+from goodreads import book, review
 
 
 
@@ -136,11 +136,11 @@ def logout():
     return redirect("/")
 
 
-app.route("/book/<string:isbn>/", methods=["GET", "POST"])
+app.route("/book/<isbn>/", methods=["POST", "GET"])
 @login_required
 def book(isbn):
     #search book_id using the isbn number.
-    user_id = db.execute("SELECT id FROM public.users WHERE username = :username", {"username": session["current_user"]}).fetchone()[0]
+    user_id = db.execute("SELECT id FROM public.users WHERE username = :username", {"username": session["user_id"]}).fetchone()[0]
 
     # Get the book details
     book = db.execute("SELECT * FROM public.book WHERE isbn = :isbn", {"isbn": isbn}).fetchone()
@@ -203,7 +203,9 @@ def api(isbn):
     #read API key from goodreads.
     key = os.getenv("GOODREADS_KEY")
     #getting the api from the website goodreads.com
-    response = requests.get("https://www.goodreads.com/book/review_counts.json", params={"key": key, "isbns": isbn}).json()
+    response = requests.get("https://www.goodreads.com/book/review_counts.json", params={"key": key, "isbns": isbn})
+    print(response.json())
+
 
 
     sql_string = "SELECT * FROM books WHERE isbn = :isbn"
@@ -215,13 +217,13 @@ def api(isbn):
         #return unprocessable entity error.
         return jsonify({"success": "False"}), 422
 
-    if db.execute("SELECT review_rating FROM public.reviews WHERE book_isbn = :isbn", {"isbn": isbn}).rowcount == 0:
+    if db.execute("SELECT rating FROM public.reviews WHERE isbn_book = :isbn", {"isbn": isbn}).rowcount == 0:
         average_score = 0
         review_count = 0
     else:
         review_count = db.execute("SELECT COUNT(rating) FROM public.reviews WHERE isbn_book = :isbn", {"isbn": isbn}).fetchone()[0]
 
-        average_score = db.execute("SELECT AVG(rating) FROM public.reviews WHERE isbn_book = :isbn", {"isbn": isbn}).fetchone()[0]
+        average_rating = db.execute("SELECT AVG(rating) FROM public.reviews WHERE isbn_book = :isbn", {"isbn": isbn}).fetchone()[0]
 
     return jsonify({
             "title": selected_book.title,
@@ -229,5 +231,5 @@ def api(isbn):
             "year": selected_book.year,
             "isbn": selected_book.isbn,
             "review_count": str(review_count),
-            "average_score": str(round(average_score,2))
+            "average_rating": str(round(average_score,2))
     })

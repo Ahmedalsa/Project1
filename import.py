@@ -11,7 +11,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 
 #set up connection to the database
 
-connection = create_engine('postgres://jrmqlumszscete:7a7a8b6d39ca502a1f037d56b887670a944ef7eeac3773d84447a0fa4f1f93b1@ec2-107-20-198-176.compute-1.amazonaws.com:5432/d7e9ku4tq19i8e')
+connection = create_engine(os.getenv("DATABASE_URL"))
 sql = scoped_session(sessionmaker(bind=connection))
 
 def main():

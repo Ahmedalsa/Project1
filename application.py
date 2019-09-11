@@ -136,65 +136,33 @@ def logout():
     return redirect("/")
 
 
-app.route("/book/<isbn>/", methods=["POST", "GET"])
+app.route("/book/<string:isbns>/", methods=["POST", "GET"])
 @login_required
-def book(isbn):
+def book(isbns):
+    #read API key from goodreads.
+    key = os.getenv("GOODREADS_KEY")
     #search book_id using the isbn number.
-    user_id = db.execute("SELECT id FROM public.users WHERE username = :username", {"username": session["user_id"]}).fetchone()[0]
-
-    # Get the book details
-    book = db.execute("SELECT * FROM public.book WHERE isbn = :isbn", {"isbn": isbn}).fetchone()
-    if book is None:
-        flash("This book is not in our system.")
-        return redirect(url_for('index'))
-
-    else: # Get the book statistics from GoodreadsAPI and database
-        review_statistics = GoodreadsAPI.review_data_isbn(isbn)
-
-        if db.execute("SELECT rating FROM public.reviews WHERE isbn_book = :isbn", {"isbn": isbn}).rowcount == 0:
-            average_score = 0
-            review_count = 0
-        else:
-            review_count = db.execute("SELECT COUNT(rating) FROM public.reviews WHERE isbn_book = :isbn", {"isbn": isbn}).fetchone()[0]
-
-            average_score = db.execute("SELECT AVG(rating) FROM public.reviews WHERE isbn_book = :isbn", {"isbn": isbn}).fetchone()[0]
-
-    # Show all the user reviews
-    reviews = db.execute("SELECT username, review, rating FROM public.users FULL OUTER JOIN public.reviews ON public.user.id = public.reviews.username_id WHERE isbn_book = :isbn", {"isbn": isbn})
-
-    # Check if user has already added a # REVIEW:
-    cur = db.execute("SELECT * FROM public.reviews WHERE (username_id = :user_id) AND (isbn_book = :isbn)", {"user_id": user_id, "isbn": isbn})
-
-    if cur.rowcount > 0:
-        reviewed = True
-        rating = cur.fetchone()[3]
-
-    else:
-        reviewed = False
-        rating = None
-
-    # Add review
+    res = db.execute("SELECT * FROM books WHERE isbn = :isbn", {"isbn": isbn}).fetchone()
+    #import api from Goodreads.com
+    r = requests.get("https://www.goodreads.com/book/review_counts.json", params={"key": key, "isbns": isbn})
+    if r.status_code != 200:
+      raise ValueError
+    reviews_count=r.json()["books"][0]["reviews_count"]
+    average_rating=r.json()["books"][0]["average_rating"]
     if request.method == "POST":
-        rating = int(request.form.get("rating"))
-        review = request.form.get("review")
+        username = session.get("username")
+        review = request.form.get("comment")
+        rating = request.form.get("rating")
+        date = datetime.now()
+        #get user_id to get # REVIEW
+        user_id = db.execute("SELECT id FROM users WHERE username = :username",{"username":username}).fetchone()[0]
 
-        #check for review rating
-        if rating > 5 or rating < 1:
-            flash("Please try again later.")
-            return redirect(url_for('book', isbn=isbn))
+        db.execute("INSERT INTO reviews (user_id, username, review, rating, date) VALUES (:user_id, :username, :review, :rating, :date)", {"user_id": user_id, "date":date, "review":review, "rating":rating, "username":username})
 
-        if db.execute("SELECT * FROM public.reviews WHERE (username_id = :user_id) AND (isbn_book = :isbn)", {"user_id": user_id, "isbn": isbn}).rowcount > 0:
-            flash("It seems you've already reviewed this book.")
+        db.commit()
 
-        else:
-            db.execute("INSERT INTO public.reviews (username_id, isbn_book, review, rating) VALUES (:user_id, :book_isbn, :review, :rating)", {"user_id": user_id, "book_isbn": isbn, "review": review, "rating": rating})
 
-            db.commit()
-
-            flash("Review added successfully")
-            return redirect(url_for('book', isbn=isbn))
-
-    return render_template("book.html", book=book, reviewed=reviewed, rating=rating, reviews=reviews, review_statistics=review_statistics, review_count=review_count, average_score=str(round(average_score,2)), user=session.get('current_user'))
+    return render_template("book.html", reviews_count = reviews_count, average_rating = average_rating)
 
 
 @app.route("/api/<string:isbn>", methods=["GET"])
@@ -221,9 +189,9 @@ def api(isbn):
         average_score = 0
         review_count = 0
     else:
-        review_count = db.execute("SELECT COUNT(rating) FROM public.reviews WHERE isbn_book = :isbn", {"isbn": isbn}).fetchone()[0]
+        review_count = db.execute("SELECT COUNT(rating) FROM public.reviews WHERE isbn_book = :isbn", {"isbn": isbns}).fetchone()[0]
 
-        average_rating = db.execute("SELECT AVG(rating) FROM public.reviews WHERE isbn_book = :isbn", {"isbn": isbn}).fetchone()[0]
+        average_rating = db.execute("SELECT AVG(rating) FROM public.reviews WHERE isbn_book = :isbn", {"isbn": isbns}).fetchone()[0]
 
     return jsonify({
             "title": selected_book.title,

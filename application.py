@@ -156,11 +156,10 @@ def book(isbns):
         date = datetime.now()
         #get user_id to get # REVIEW
         user_id = db.execute("SELECT id FROM users WHERE username = :username",{"username":username}).fetchone()[0]
-
-        db.execute("INSERT INTO reviews (user_id, username, review, rating, date) VALUES (:user_id, :username, :review, :rating, :date)", {"user_id": user_id, "date":date, "review":review, "rating":rating, "username":username})
-
+        query = "INSERT INTO reviews (user_id, username, review, rating, date)\
+         VALUES (:user_id, :username, :review, :rating, :date)"
+        db.execute(, {"user_id": user_id, "date":date, "review":review, "rating":rating, "username":username})
         db.commit()
-
 
     return render_template("book.html", reviews_count = reviews_count, average_rating = average_rating)
 

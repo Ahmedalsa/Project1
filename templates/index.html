@@ -6,10 +6,8 @@
 
 {% block content %}
     <h1>Searh here</h1>
-      <form action="/search" method="GET">
-        <div class="form-group">
-        <input type="text" name="book" class="form-control" placeholder="ISBN, Title or Author"><br>
-      </div>
-      <button class="btn btn-primary" type="submit">Searh</button>
-      </form>
+    <form class="form-inline md-form mr-auto mb-4" action="/search" method="GET">
+<input class="form-control mr-sm-2" type="text" placeholder="Search" aria-label="Search" name="book">
+<button class="btn aqua-gradient btn-rounded btn-sm my-0" type="submit">Search</button>
+</form>
 {% endblock %}

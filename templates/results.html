@@ -9,15 +9,30 @@
 
     {% for book in books %}
 
-        <div class="container results-container">
-        {{book['title']}}
-        {{book['author']}}
-        {{book['year']}}
-        {{book['isbn']}}
-      </div>
+    <div class="container">
+         <table class="table">
+           <thead>
+             <tr>
+               <th scope="col">Book Title</th>
+               <th scope="col">Author</th>
+               <th scope="col">Year</th>
+               <th scope="col">Book ISBN</th>
+               <th scope="col">Book Info</th>
+             </tr>
+           </thead>
+           <tbody>
+             <td>{{book['title']}}</td>
+             <td>{{book['author']}}</td>
+             <td>{{book['year']}}</td>
+             <td>{{book['isbn']}}</td>
+             <td><a href="/book/{{book['isbn']}}">Go</a></td>
+           </tbody>
+
+         </table>
 
       <div class="">
-        <a href="/book/{{book['isbn']}}">Book Info</a>
+
+      </div>
       </div>
     {% endfor %}
 

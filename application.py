@@ -8,6 +8,8 @@ import requests, re
 from jinja2 import Template
 from decorators import login_required
 from goodreads import book, review
+from werkzeug.security import check_password_hash, generate_password_hash
+
 
 
 
@@ -63,9 +65,12 @@ def signup():
 
         elif not confirm:
             return render_template("error.html", message="Please provide a valid confirmation!")
+
+        #Encrypt password using hash
+        encrypted = generate_password_hash(request.form.get("password"), method='pbkdf2:sha256', salt_length=8)
         #enter values to the database.
-        register = "INSERT INTO users (username, password) VALUES (:username, :password)"
-        db.execute(register, {"username": username, "password": password})
+        register = "INSERT INTO users (username, hash) VALUES (:username, :password)"
+        db.execute(register, {"username": username, "password": encrypted})
         db.commit()
 
         flash('User created', 'info')
@@ -160,7 +165,7 @@ def book(isbn):
         return render_template("book.html", bookId=bookId, average_rating=average_rating, rating_count=rating_count)
 
     if request.method=="POST":
-        id = db.execute("SELECT id FROM users WHERE username =:username",{"username":current_user}).fetchone()
+        id = db.execute("SELECT id FROM users WHERE id =:id",{"id":current_user}).fetchone()
         id = id[0]
         b_id2= db.execute("SELECT isbn, title, author, year FROM books WHERE isbn= :isbn",{"isbn":isbn})
         if b_id2.rowcount==0:

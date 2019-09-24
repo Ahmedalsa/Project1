@@ -1,8 +1,8 @@
 {% extends "layout.html" %}
 
 {% block head%}
-<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-{% endblock %}
+
+ {% endblock %}
 
 {% block content %}
 
@@ -32,7 +32,7 @@
       </div>
 
     <div class="container">
-      <h4>Good Reads Review Information</h4>
+      <h4>Goodreads Review</h4>
       <table class="table">
       <thead>
         <th scope="col">Average Rating</th>
@@ -45,7 +45,7 @@
       </tbody>
   </table>
   <div class="">
-    <a href="https://www.goodreads.com/search?q={{bookId[0]['title']}}" class="btn btn-success">Goodreads page</a>
+    <a href="https://www.goodreads.com/search?q={{bookId[0]['title']}}" class="btn btn-success">Goodreads link</a>
   </div>
   </div>
 
@@ -70,12 +70,9 @@
 
 
       <div class="form-group col-sm-6">
-        <label for="rating"><strong>Leave a comment</strong></label>
+        <label for="rating"><strong>Comment Here</strong></label>
                    <div class="input-group">
 
-                       <div class="input-group-prepend">
-                           <span class="input-group-text">Say something</span>
-                       </div>
                        <textarea name="comment" id="comment" class="form-control" rows="1" required></textarea>
                    </div>
                </div>
